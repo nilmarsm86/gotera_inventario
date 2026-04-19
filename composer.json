@@ -9,6 +9,9 @@
         "php": ">=8.4",
         "ext-ctype": "*",
         "ext-iconv": "*",
+        "doctrine/doctrine-bundle": "^3.2",
+        "doctrine/doctrine-migrations-bundle": "^4.0",
+        "doctrine/orm": "^3.6",
         "symfony/console": "8.0.*",
         "symfony/dotenv": "8.0.*",
         "symfony/flex": "^2",
@@ -17,10 +20,22 @@
         "symfony/yaml": "8.0.*"
     },
     "require-dev": {
+        "friendsofphp/php-cs-fixer": "^3.95",
+        "phpmd/phpmd": "^2.5",
+        "phpstan/extension-installer": "^1.4",
+        "phpstan/phpstan": "^2.1",
+        "phpstan/phpstan-doctrine": "^2.0",
+        "phpstan/phpstan-strict-rules": "^2.0",
+        "phpstan/phpstan-symfony": "^2.0",
+        "phpunit/phpunit": "^13.1",
+        "symfony/browser-kit": "8.0.*",
+        "symfony/css-selector": "8.0.*",
+        "symfony/maker-bundle": "^1.67"
     },
     "config": {
         "allow-plugins": {
             "php-http/discovery": true,
+            "phpstan/extension-installer": true,
             "symfony/flex": true,
             "symfony/runtime": true
         },
@@ -59,7 +74,21 @@
         ],
         "post-update-cmd": [
             "@auto-scripts"
-        ]
+        ],
+        "cs:check": "php-cs-fixer fix --dry-run --diff --ansi",
+        "cs:fix":   "php-cs-fixer fix --ansi",
+        "stan":        "phpstan analyse --ansi",
+        "stan:baseline":"phpstan analyse --generate-baseline --ansi",
+        "phpmd":      "php bin/phpmd-pretty",
+        "phpmd:next": "php bin/phpmd-pretty",
+        "phpmd:0":    "php bin/phpmd-pretty 0",
+        "phpmd:1":    "php bin/phpmd-pretty 1",
+        "phpmd:2":    "php bin/phpmd-pretty 2",
+        "phpmd:3":    "php bin/phpmd-pretty 3",
+        "phpmd:4":    "php bin/phpmd-pretty 4",
+        "phpmd:5":    "php bin/phpmd-pretty 5",
+        "phpmd:6":    "php bin/phpmd-pretty 6",
+        "qa":          ["@phpmd", "@cs:check", "@stan"]
     },
     "conflict": {
         "symfony/symfony": "*"

@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<ruleset name="Level 4 — Diseño">
+    <rule ref="phpmd/level3.xml"/>
+
+    <rule ref="rulesets/design.xml/CouplingBetweenObjects">
+        <properties>
+            <property name="maximum" value="18"/>
+        </properties>
+    </rule>
+    <rule ref="rulesets/design.xml/ExitExpression"/>
+    <rule ref="rulesets/design.xml/EvalExpression"/>
+    <rule ref="rulesets/design.xml/GotoStatement"/>
+</ruleset>

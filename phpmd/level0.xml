@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<ruleset name="Level 0 — Crítico">
+    <exclude-pattern>.*Migrations.*</exclude-pattern>
+    <exclude-pattern>.*DataFixtures.*</exclude-pattern>
+    <exclude-pattern>.*Kernel\.php</exclude-pattern>
+    <exclude-pattern>.*[Tt]est.*</exclude-pattern>
+    <!-- Parámetros que nunca se usan -->
+    <rule ref="rulesets/unusedcode.xml/UnusedFormalParameter"/>
+    <!-- Variables locales sin usar -->
+    <rule ref="rulesets/unusedcode.xml/UnusedLocalVariable"/>
+</ruleset>

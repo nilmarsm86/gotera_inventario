@@ -1,0 +1,22 @@
+parameters:
+    bootstrapFiles:
+        - vendor/autoload.php
+    level: 10
+    checkTooWideReturnTypesInProtectedAndPublicMethods: true
+    reportUnmatchedIgnoredErrors: true
+    phpVersion: 80500
+    paths:
+        - src/
+    ignoreErrors:
+        #- '#Property .+::\$id \(int\|null\) is never assigned int#'
+        #- '#Method App\\Component\\Live\\.+::.+ is unused#'
+        #- '#Method .+::.+\(\) should return Symfony\\Component\\Form\\FormInterface<.+> but returns Symfony\\Component\\Form\\FormInterface<.+>#'
+        #- '#Method .+::buildForm\(\) has parameter \$builder with no value type specified#'
+        #- '#Method .+::buildView\(\) has parameter \$form with no value type specified#'
+        #- '#PHPDoc tag @SuppressWarnings has invalid value#'
+        #-
+        #    message: '#Variable property access on \$this#'
+        #    path: src/Component/Live/*
+    excludePaths:
+        - src/Kernel.php
+    treatPhpDocTypesAsCertain: false

@@ -1,0 +1,5 @@
+<?xml version="1.0"?>
+<ruleset name="Level 1 — Código muerto">
+    <rule ref="phpmd/level0.xml"/>
+    <rule ref="rulesets/unusedcode.xml"/>
+</ruleset>

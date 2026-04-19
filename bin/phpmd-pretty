@@ -1,0 +1,246 @@
+#!/usr/bin/env php
+<?php
+
+// ─── Exclusiones manuales (más fiables que --exclude en Windows) ─────────────
+
+$excludePatterns = [
+    'Migrations',
+    'DataFixtures',
+    'Kernel.php',
+    'tests',
+    'Tests',
+];
+
+function isExcluded(string $absolutePath, array $patterns): bool
+{
+    $normalized = str_replace('\\', '/', $absolutePath);
+
+    foreach ($patterns as $pattern) {
+        if (str_contains($normalized, $pattern)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+function isPhpStorm(): bool
+{
+    return 'JetBrains-JediTerm' === getenv('TERMINAL_EMULATOR');
+}
+
+function supportsOsc8(): bool
+{
+    $term = getenv('TERM_PROGRAM') ?: '';
+    $termEnv = getenv('TERM') ?: '';
+
+    return in_array($term, ['iTerm.app', 'WezTerm', 'ghostty'], true)
+        || str_contains(getenv('WT_SESSION') ?: '', '-')
+        || ('xterm-256color' === $termEnv && !isPhpStorm());
+}
+
+function terminalLink(string $label, string $url): string
+{
+    if (isPhpStorm() || !supportsOsc8()) {
+        return $label;
+    }
+
+    return "\033]8;;{$url}\033\\{$label}\033]8;;\033\\";
+}
+
+function fileLink(string $absolutePath, int $beginLine, int $endLine): string
+{
+    $isWindows = 'WIN' === strtoupper(substr(PHP_OS, 0, 3));
+    $normalized = str_replace('\\', '/', $absolutePath);
+    $lineRange = $beginLine === $endLine
+        ? "línea {$beginLine}"
+        : "líneas {$beginLine}–{$endLine}";
+
+    if (isPhpStorm()) {
+        // PHPStorm detecta y enlaza automáticamente este patrón
+        return "\033[90m{$absolutePath}:{$beginLine}\033[0m";
+    }
+
+    if (supportsOsc8()) {
+        $uri = ($isWindows ? 'file:///' : 'file://').$normalized.':'.$beginLine;
+
+        return "\033]8;;{$uri}\033\\\033[90m@ {$lineRange}\033[0m\033]8;;\033\\";
+    }
+
+    return "\033[90m{$absolutePath}:{$beginLine}\033[0m";
+}
+
+function formatFileHeader(string $absolutePath, string $relativePath, int $count): string
+{
+    $isWindows = 'WIN' === strtoupper(substr(PHP_OS, 0, 3));
+    $normalized = str_replace('\\', '/', $absolutePath);
+    $suffix = " \033[90m({$count} violación".($count > 1 ? 'es' : '').")\033[0m";
+
+    if (isPhpStorm()) {
+        // Ruta absoluta para que PHPStorm la enlace, label con color
+        return "\033[1m\033[36m📄 \033[0m\033[90m{$absolutePath}:1\033[0m{$suffix}";
+    }
+
+    $label = "\033[1m\033[36m📄 {$relativePath}\033[0m";
+
+    if (supportsOsc8()) {
+        $uri = ($isWindows ? 'file:///' : 'file://').$normalized.':1';
+
+        return terminalLink($label, $uri).$suffix;
+    }
+
+    return $label.$suffix;
+}
+
+function priorityMeta(int $priority): array
+{
+    return match (true) {
+        1 === $priority => ['icon' => '🔴', 'label' => 'CRITICAL', 'color' => "\033[31;1m"],
+        2 === $priority => ['icon' => '🟠', 'label' => 'HIGH    ', 'color' => "\033[31m"],
+        3 === $priority => ['icon' => '🟡', 'label' => 'MEDIUM  ', 'color' => "\033[33m"],
+        4 === $priority => ['icon' => '🔵', 'label' => 'LOW     ', 'color' => "\033[34m"],
+        default => ['icon' => '⚪', 'label' => 'INFO    ', 'color' => "\033[90m"],
+    };
+}
+
+function formatLevelSummary(array $counts): string
+{
+    $parts = [];
+
+    foreach ([1 => 'CRITICAL', 2 => 'HIGH', 3 => 'MEDIUM', 4 => 'LOW', 5 => 'INFO'] as $p => $label) {
+        if (empty($counts[$p])) {
+            continue;
+        }
+        $meta = priorityMeta($p);
+        $parts[] = "{$meta['icon']} {$meta['color']}{$label}\033[0m: {$counts[$p]}";
+    }
+
+    return implode('   ', $parts);
+}
+
+// ─── Main ───────────────────────────────────────────────────────────────────
+
+$isWindows = 'WIN' === strtoupper(substr(PHP_OS, 0, 3));
+$xmlFile = sys_get_temp_dir().DIRECTORY_SEPARATOR.'phpmd_output.xml';
+$phpmd = __DIR__.'/../vendor/bin/phpmd';
+$redirect = $isWindows ? '2>NUL' : '2>/dev/null';
+
+// Leer nivel desde argumento: php bin/phpmd-pretty 3
+$level = isset($argv[1]) && is_numeric($argv[1])
+    ? (int) $argv[1]
+    : null;
+
+// Leer nivel guardado si no se pasa argumento
+$levelFile = __DIR__.'/../phpmd/.level';
+if (null === $level) {
+    $level = file_exists($levelFile)
+        ? (int) trim(file_get_contents($levelFile))
+        : 0;
+}
+
+$maxLevel = 6;
+$level = max(0, min($level, $maxLevel));
+$config = __DIR__."/../phpmd/level{$level}.xml";
+
+if (!file_exists($config)) {
+    echo "\033[31m❌ Config no encontrada: {$config}\033[0m\n";
+    exit(1);
+}
+
+echo "\n\033[90mNivel activo: \033[1m{$level}/{$maxLevel}\033[0m";
+echo " \033[90m→ phpmd/level{$level}.xml\033[0m\n";
+
+$command = sprintf(
+    'php %s %s xml %s --reportfile %s %s',
+    escapeshellarg($phpmd),
+    'src/',
+    escapeshellarg($config),
+    escapeshellarg($xmlFile),
+    $redirect
+);
+
+exec($command, $output, $exitCode);
+
+if (!file_exists($xmlFile)) {
+    echo "\033[32m✅ Sin violaciones en nivel {$level}\033[0m\n";
+    exit(0);
+}
+
+$content = file_get_contents($xmlFile);
+unlink($xmlFile);
+
+if (empty(trim($content))) {
+    echo "\033[32m✅ Sin violaciones en nivel {$level}\033[0m\n";
+    exit(0);
+}
+
+$xml = simplexml_load_string($content);
+
+if (!$xml || !isset($xml->file)) {
+    echo "\033[32m✅ Sin violaciones en nivel {$level}\033[0m\n";
+    exit(0);
+}
+
+$totalViolations = 0;
+$fileCount = 0;
+$countsByPriority = [];
+$cwd = getcwd().DIRECTORY_SEPARATOR;
+
+echo "\033[1m\033[33m⚠  PHPMD — Nivel {$level}/{$maxLevel}\033[0m\n";
+echo str_repeat('─', 60)."\n";
+
+foreach ($xml->file as $file) {
+    $absolutePath = (string) $file['name'];
+    $relativePath = str_replace('\\', '/', str_replace($cwd, '', $absolutePath));
+
+    // ✅ Saltar archivos excluidos
+    if (isExcluded($absolutePath, $excludePatterns)) {
+        continue;
+    }
+
+    $violations = $file->violation;
+    $count = count($violations);
+    $totalViolations += $count;
+    ++$fileCount;
+
+    echo "\n".formatFileHeader($absolutePath, $relativePath, $count)."\n";
+
+    foreach ($violations as $violation) {
+        $rule = (string) $violation['rule'];
+        $ruleset = (string) $violation['ruleset'];
+        $beginLine = (int) $violation['beginline'];
+        $endLine = (int) $violation['endline'];
+        $priority = (int) $violation['priority'];
+        $message = trim((string) $violation);
+
+        $countsByPriority[$priority] = ($countsByPriority[$priority] ?? 0) + 1;
+
+        $meta = priorityMeta($priority);
+        $link = fileLink($absolutePath, $beginLine, $endLine);
+
+        echo "  {$meta['icon']} {$meta['color']}{$meta['label']}\033[0m";
+        echo "  \033[1m{$rule}\033[0m \033[90m[{$ruleset}]\033[0m\n";
+        echo "     {$link}\n";
+        echo "     \033[97m{$message}\033[0m\n";
+    }
+}
+
+$nextLevel = $level < $maxLevel ? $level + 1 : null;
+
+echo "\n".str_repeat('─', 60)."\n";
+echo "\033[1m📊 Total: {$totalViolations} violaciones en {$fileCount} archivo(s)\033[0m\n";
+
+if ('' !== ($summary = formatLevelSummary($countsByPriority))) {
+    echo $summary."\n";
+}
+
+if (0 === $totalViolations && null !== $nextLevel) {
+    echo "\n\033[32m🎉 ¡Nivel {$level} superado! Sube al siguiente:\033[0m\n";
+    echo "\033[90m   php bin/phpmd-pretty {$nextLevel}\033[0m\n";
+    echo "\033[90m   o guárdalo: echo {$nextLevel} > phpmd/.level\033[0m\n";
+}
+
+echo "\n";
+exit($totalViolations > 0 ? 1 : 0);

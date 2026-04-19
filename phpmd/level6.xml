@@ -1,0 +1,34 @@
+<?xml version="1.0"?>
+<ruleset name="Level 6 — Máximo">
+    <rule ref="phpmd/level5.xml"/>
+
+    <!-- Umbrales más estrictos que el nivel 3 -->
+    <rule ref="rulesets/codesize.xml/CyclomaticComplexity">
+        <properties>
+            <property name="reportLevel" value="10"/>
+        </properties>
+    </rule>
+    <rule ref="rulesets/codesize.xml/ExcessiveMethodLength">
+        <properties>
+            <property name="maximum" value="40"/>
+            <property name="ignore-whitespace" value="true"/>
+        </properties>
+    </rule>
+    <rule ref="rulesets/codesize.xml/TooManyMethods">
+        <properties>
+            <property name="maxmethods" value="20"/>
+        </properties>
+    </rule>
+    <rule ref="rulesets/codesize.xml/ExcessiveParameterList">
+        <properties>
+            <property name="maximum" value="8"/>
+        </properties>
+    </rule>
+    <rule ref="rulesets/design.xml/CouplingBetweenObjects">
+        <properties>
+            <property name="maximum" value="13"/>
+        </properties>
+    </rule>
+    <rule ref="rulesets/cleancode.xml"/>
+    <rule ref="rulesets/naming.xml"/>
+</ruleset>
